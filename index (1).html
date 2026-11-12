@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Number Recognition</title>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#0f172a;--mute:#64748b;--line:#e2e8f0;--blue:#2563eb;--green:#16a34a;--orange:#f59e0b;--red:#dc2626;--sh:0 1px 2px rgba(15,23,42,.05),0 10px 28px rgba(15,23,42,.07)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+h1{font-size:1.45rem;margin:0;letter-spacing:-.02em}
+h2{font-size:1.05rem;margin:0 0 12px}
+.sub{color:var(--mute);margin:2px 0 0}
+.card{background:var(--card);border-radius:20px;box-shadow:var(--sh);padding:18px}
+.grid{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;margin-bottom:18px}
+@media(max-width:880px){.grid{grid-template-columns:1fr}}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;background:#eef2f7;color:var(--mute);font-size:.85rem;font-weight:600;transition:all .25s}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.pill.ok{background:#dcfce7;color:var(--green)}.pill.warn{background:#fef3c7;color:#b45309}.pill.err{background:#fee2e2;color:var(--red)}.pill.scan{background:#dbeafe;color:var(--blue)}.pill.scan::before{animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.stage{position:relative;aspect-ratio:4/3;background:#0f172a;border-radius:16px;overflow:hidden}
+.stage video{width:100%;height:100%;object-fit:cover;display:block}
+.stage .ph{position:absolute;inset:0;display:grid;place-items:center;color:#94a3b8;text-align:center;padding:20px}
+.stage .pill{position:absolute;top:12px;left:12px;backdrop-filter:blur(6px)}
+.beam{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--blue),transparent);top:0;opacity:0;pointer-events:none}
+.stage.scanning .beam{opacity:.9;animation:sweep 2.2s ease-in-out infinite}
+@keyframes sweep{0%,100%{top:4%}50%{top:96%}}
+.loader{position:absolute;top:14px;right:14px;width:22px;height:22px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+button,select,input{font:inherit}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:600;cursor:pointer;color:#fff;transition:transform .15s,filter .2s,opacity .2s}
+.btn:hover:not(:disabled){filter:brightness(1.08)}.btn:active:not(:disabled){transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.b-blue{background:var(--blue)}.b-green{background:var(--green)}.b-orange{background:var(--orange);color:#1f1300}.b-ghost{background:#eef2f7;color:var(--ink)}
+select,input[type=text],input[type=number]{border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:#fff;color:var(--ink);min-width:0}
+:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;margin-left:auto}
+.switch input{appearance:none;width:42px;height:24px;border-radius:999px;background:#cbd5e1;position:relative;transition:background .2s;cursor:pointer}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked{background:var(--green)}.switch input:checked::after{transform:translateX(18px)}
+.msg{margin-top:12px;padding:10px 14px;border-radius:12px;background:#fee2e2;color:#991b1b;font-size:.9rem}
+.msg.info{background:#dbeafe;color:#1e40af}
+.result{text-align:center}
+.num{font-size:clamp(4rem,13vw,7.5rem);font-weight:800;line-height:1.05;letter-spacing:-.04em;margin:8px 0 4px;color:var(--mute);word-break:break-word;transition:color .25s}
+.num.ok{color:var(--green)}.num.warn{color:var(--orange)}
+.bar{height:10px;background:#eef2f7;border-radius:999px;overflow:hidden;margin:6px 0 4px}
+.bar i{display:block;height:100%;width:0;background:var(--green);border-radius:999px;transition:width .5s ease,background .3s}
+.bar i.warn{background:var(--orange)}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;margin-top:14px;font-size:.9rem}
+.meta span{display:block;color:var(--mute);font-size:.8rem}
+.preview{margin-top:14px;width:100%;max-height:190px;object-fit:contain;border-radius:14px;background:#f1f5f9;min-height:90px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.tools label{display:grid;gap:3px;font-size:.8rem;color:var(--mute)}
+.tools input{width:150px}.tools input.wide{width:260px;max-width:100%}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th,td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--mute);font-weight:600;font-size:.85rem}
+.thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;cursor:pointer;transition:transform .15s;display:block}
+.thumb:hover{transform:scale(1.06)}
+.hnum{font-weight:800;font-size:1.15rem}
+.x{border:0;background:none;color:var(--mute);font-size:1.2rem;cursor:pointer;border-radius:8px;padding:2px 8px}.x:hover{background:#fee2e2;color:var(--red)}
+.empty{color:var(--mute);text-align:center;padding:22px}
+dialog{border:0;border-radius:20px;padding:16px;max-width:min(92vw,680px);box-shadow:0 20px 60px rgba(15,23,42,.3)}
+dialog::backdrop{background:rgba(15,23,42,.55)}
+dialog img{width:100%;border-radius:12px;display:block}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Number recognition</h1>
+      <p class="sub">Point a number or banknote at the camera and the trained model reads it.</p>
+    </div>
+    <span class="pill" id="backend">Backend not contacted yet</span>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="stage" id="stage">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="ph" id="ph">Camera is off.<br>Press Start camera to begin.</div>
+        <span class="pill" id="badge">Camera off</span>
+        <div class="loader" id="loader" hidden></div>
+        <div class="beam"></div>
+      </div>
+      <div class="row">
+        <select id="cam" aria-label="Camera"></select>
+        <button class="btn b-blue" id="start">Start camera</button>
+        <button class="btn b-ghost" id="stop" disabled>Stop camera</button>
+        <button class="btn b-orange" id="snap" disabled>Capture image</button>
+        <label class="switch"><input type="checkbox" id="auto" checked> Auto detect</label>
+      </div>
+      <div class="msg" id="err" hidden></div>
+    </section>
+
+    <section class="card result" aria-live="polite">
+      <h2>Prediction</h2>
+      <div class="num" id="num">—</div>
+      <div class="bar"><i id="barfill"></i></div>
+      <div id="confText" style="font-weight:700">Confidence —</div>
+      <div class="meta">
+        <div><span>Status</span><b id="stat">Waiting for camera</b></div>
+        <div><span>Detected at</span><b id="when">—</b></div>
+      </div>
+      <img class="preview" id="preview" alt="Last analyzed frame" hidden>
+    </section>
+  </div>
+
+  <section class="card" style="margin-bottom:18px">
+    <h2>Backend settings</h2>
+    <div class="tools">
+      <label>Prediction endpoint<input class="wide" type="text" id="cfgUrl"></label>
+      <label>Minimum confidence (%)<input type="number" id="cfgMin" min="1" max="99"></label>
+      <label>Auto interval (ms)<input type="number" id="cfgInt" min="500" step="100"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2 style="margin:0">Detection history</h2>
+      <button class="btn b-ghost" id="clear">Clear history</button>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Image</th><th>Number</th><th>Confidence</th><th>Result</th><th>Time</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty">No detections yet. Start the camera and show it a number.</div>
+  </section>
+</div>
+
+<dialog id="dlg">
+  <img id="dlgImg" alt="Saved capture">
+  <p id="dlgCap" style="margin:10px 0 12px;font-weight:600"></p>
+  <button class="btn b-blue" id="dlgClose">Close</button>
+</dialog>
+
+<script>
+(() => {
+'use strict';
+
+/* ---- Configuration: match these to your existing backend ---- */
+const DEFAULTS = {
+  endpoint: '/predict',      // URL of the existing prediction route
+  fieldName: 'image',        // multipart field name the route expects
+  intervalMs: 1500,          // gap between automatic analyses
+  minConfidence: 60,         // percent; below this a result is "low confidence"
+  maxWidth: 640,             // frames are downscaled to this width before upload
+  jpegQuality: 0.85,
+  timeoutMs: 15000,
+  cooldownMs: 5000,          // same number is not logged again within this time
+  maxHistory: 50
+};
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+};
+const cfg = { ...DEFAULTS, ...store.get('ncr.cfg', {}) };
+let history = store.get('ncr.history', []);
+
+const $ = id => document.getElementById(id);
+const video = $('video'), work = document.createElement('canvas');
+let stream = null, busy = false, timer = null, fails = 0, lastLabel = null, lastTime = 0, prevUrl = null;
+
+/* ---- Status helpers ---- */
+const KINDS = {
+  off:      ['Camera off', ''],
+  ready:    ['Ready', 'ok'],
+  scan:     ['Analyzing…', 'scan'],
+  detected: ['Number detected', 'ok'],
+  low:      ['Low confidence', 'warn'],
+  none:     ['No number detected', 'warn'],
+  error:    ['Error', 'err']
+};
+function setStatus(kind, text) {
+  const [label, cls] = KINDS[kind];
+  $('badge').className = 'pill ' + cls;
+  $('badge').textContent = text || label;
+  $('stat').textContent = text || label;
+  $('stage').classList.toggle('scanning', !!stream && $('auto').checked && kind !== 'error');
+}
+function showError(text) { const e = $('err'); e.textContent = text; e.className = 'msg'; e.hidden = !text; }
+function setBackend(ok, text) { $('backend').className = 'pill ' + (ok ? 'ok' : 'err'); $('backend').textContent = text; }
+
+/* ---- Camera ---- */
+async function listCameras() {
+  const sel = $('cam'), keep = sel.value || 'environment';
+  sel.replaceChildren(new Option('Rear camera', 'environment'), new Option('Front camera', 'user'));
+  try {
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput' && d.label);
+    devs.forEach((d, i) => sel.add(new Option(d.label || 'Camera ' + (i + 1), d.deviceId)));
+  } catch {}
+  sel.value = [...sel.options].some(o => o.value === keep) ? keep : 'environment';
+}
+function constraintsFor(v, simple) {
+  const base = { width: { ideal: 1280 }, height: { ideal: 720 } };
+  if (simple) return { video: true, audio: false };
+  if (v === 'user' || v === 'environment') return { video: { ...base, facingMode: { ideal: v } }, audio: false };
+  return { video: { ...base, deviceId: { exact: v } }, audio: false };
+}
+async function startCamera() {
+  showError('');
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showError('This browser cannot access the camera. Open the page over HTTPS or on localhost.');
+    return setStatus('error', 'Camera unavailable');
+  }
+  stopCamera(true);
+  $('start').disabled = true;
+  try {
+    try { stream = await navigator.mediaDevices.getUserMedia(constraintsFor($('cam').value)); }
+    catch (e) { if (e.name === 'OverconstrainedError' || e.name === 'NotFoundError') stream = await navigator.mediaDevices.getUserMedia(constraintsFor(null, true)); else throw e; }
+    video.srcObject = stream;
+    await video.play();
+    $('ph').hidden = true; $('stop').disabled = false; $('snap').disabled = false;
+    await listCameras();
+    setStatus('ready'); fails = 0; loop();
+  } catch (e) {
+    stream = null;
+    const m = {
+      NotAllowedError: 'Camera permission was denied. Allow camera access in your browser settings, then press Start camera.',
+      SecurityError: 'Camera access is blocked. Open the page over HTTPS or on localhost.',
+      NotFoundError: 'No camera was found on this device.',
+      NotReadableError: 'The camera is being used by another app. Close it and try again.'
+    }[e.name] || 'Could not start the camera: ' + (e.message || e.name);
+    showError(m); setStatus('error', 'Camera error');
+  }
+  $('start').disabled = !!stream;
+}
+function stopCamera(silent) {
+  clearTimeout(timer);
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; video.srcObject = null;
+  $('ph').hidden = false; $('stop').disabled = true; $('snap').disabled = true; $('start').disabled = false;
+  if (!silent) setStatus('off');
+  $('stage').classList.remove('scanning');
+}
+
+/* ---- Frame capture ---- */
+const toBlob = (c, q) => new Promise(r => c.toBlob(r, 'image/jpeg', q));
+async function grabFrame() {
+  const s = Math.min(1, cfg.maxWidth / video.videoWidth);
+  work.width = Math.round(video.videoWidth * s); work.height = Math.round(video.videoHeight * s);
+  work.getContext('2d').drawImage(video, 0, 0, work.width, work.height);
+  const t = document.createElement('canvas'); t.width = 240; t.height = Math.round(240 * work.height / work.width);
+  t.getContext('2d').drawImage(work, 0, 0, t.width, t.height);
+  return { blob: await toBlob(work, cfg.jpegQuality), thumb: t.toDataURL('image/jpeg', .75) };
+}
+
+/* ---- Backend ---- */
+async function send(blob) {
+  const fd = new FormData(); fd.append(cfg.fieldName, blob, 'frame.jpg');
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), cfg.timeoutMs);
+  try {
+    const r = await fetch(cfg.endpoint, { method: 'POST', body: fd, signal: ctl.signal });
+    if (!r.ok) throw new Error('Backend returned status ' + r.status + '.');
+    const d = await r.json();
+    if (d && d.error) throw new Error(String(d.error));
+    return d;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('The backend took too long to respond.');
+    if (e instanceof TypeError) throw new Error('Cannot reach the backend at ' + cfg.endpoint + '. Check that the server is running and CORS allows this page.');
+    throw e;
+  } finally { clearTimeout(t); }
+}
+/* Accepts common response shapes: {prediction, confidence}, {label, score}, {predictions:[{...}]} ... */
+function parse(d) {
+  if (Array.isArray(d)) d = { predictions: d };
+  const p = (d.predictions || d.results || [])[0] ?? d;
+  let label = p.prediction ?? p.label ?? p.class ?? p.class_name ?? p.number ?? p.denomination ?? p.digit ?? p.result;
+  let conf = Number(p.confidence ?? p.score ?? p.probability ?? p.conf);
+  conf = Number.isFinite(conf) ? (conf <= 1 ? conf * 100 : conf) : null;
+  if (typeof label === 'object' || label === '' || label == null || /^(none|unknown|null|-1)$/i.test(String(label))) label = null;
+  return { label: label == null ? null : String(label), conf };
+}
+
+/* ---- Analysis ---- */
+async function analyze(manual) {
+  if (!stream || video.readyState < 2) return;
+  if (busy) { if (manual) { showError('Still analyzing the previous frame. Try again in a moment.'); $('err').className = 'msg info'; } return; }
+  busy = true; $('loader').hidden = false; setStatus('scan'); showError('');
+  try {
+    const frame = await grabFrame();
+    const res = parse(await send(frame.blob));
+    fails = 0; setBackend(true, 'Backend connected');
+    const now = Date.now(), time = new Date(now).toLocaleString();
+    const url = URL.createObjectURL(frame.blob);
+    if (res.label === null) {
+      lastLabel = null; render({ kind: 'none' });
+      if (manual) setPreview(url); else URL.revokeObjectURL(url);
+      return;
+    }
+    const low = res.conf !== null && res.conf < cfg.minConfidence;
+    setPreview(url);
+    if (low) {
+      render({ kind: 'low', label: res.label, conf: res.conf, time });
+      if (manual) addHistory({ ...res, time, thumb: frame.thumb, low: true });
+      return;
+    }
+    const dup = !manual && res.label === lastLabel && now - lastTime < cfg.cooldownMs;
+    lastLabel = res.label; lastTime = now;
+    render({ kind: 'detected', label: res.label, conf: res.conf, time });
+    if (!dup) addHistory({ ...res, time, thumb: frame.thumb, low: false });
+  } catch (e) {
+    fails++; setBackend(false, 'Backend unavailable'); showError(e.message); setStatus('error', 'Prediction failed');
+    if (fails >= 3 && $('auto').checked) { $('auto').checked = false; showError(e.message + ' Auto detect was turned off after repeated failures.'); }
+  } finally { busy = false; $('loader').hidden = true; }
+}
+function loop() {
+  clearTimeout(timer);
+  if (!stream || !$('auto').checked) return;
+  timer = setTimeout(async () => { if (!document.hidden) await analyze(false); loop(); }, cfg.intervalMs);
+}
+
+/* ---- Rendering ---- */
+function setPreview(url) {
+  if (prevUrl) URL.revokeObjectURL(prevUrl);
+  prevUrl = url; $('preview').src = url; $('preview').hidden = false;
+}
+function render({ kind, label, conf, time }) {
+  const num = $('num'), fill = $('barfill');
+  if (kind === 'none') {
+    num.textContent = '—'; num.className = 'num';
+    fill.style.width = '0'; $('confText').textContent = 'Confidence —'; $('when').textContent = '—';
+    return setStatus('none', 'No number detected. Hold it steady and fill the frame.');
+  }
+  num.textContent = label; num.className = 'num ' + (kind === 'low' ? 'warn' : 'ok');
+  fill.style.width = (conf ?? 0) + '%'; fill.className = kind === 'low' ? 'warn' : '';
+  $('confText').textContent = 'Confidence ' + (conf === null ? 'not reported' : conf.toFixed(1) + '%');
+  $('when').textContent = time;
+  setStatus(kind, kind === 'low' ? 'Low confidence. Improve lighting and retry.' : 'Number detected');
+}
+function addHistory(h) {
+  history.unshift(h); history = history.slice(0, cfg.maxHistory);
+  while (!store.set('ncr.history', history) && history.length > 1) history.pop();
+  renderHistory();
+}
+function renderHistory() {
+  const tb = $('rows'); tb.replaceChildren();
+  $('empty').hidden = history.length > 0;
+  history.forEach((h, i) => {
+    const tr = document.createElement('tr');
+    const cell = c => { const td = document.createElement('td'); c instanceof Node ? td.append(c) : (td.textContent = c); tr.append(td); return td; };
+    const img = new Image(); img.src = h.thumb; img.alt = 'Capture of ' + h.label; img.className = 'thumb'; img.tabIndex = 0;
+    img.onclick = () => openImage(h); img.onkeydown = e => { if (e.key === 'Enter') openImage(h); };
+    cell(img);
+    cell(h.label).className = 'hnum';
+    cell(h.conf == null ? '—' : h.conf.toFixed(1) + '%');
+    const pill = document.createElement('span'); pill.className = 'pill ' + (h.low ? 'warn' : 'ok'); pill.textContent = h.low ? 'Low confidence' : 'Detected';
+    cell(pill); cell(h.time);
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = 'Remove this entry'; x.setAttribute('aria-label', 'Remove entry');
+    x.onclick = () => { history.splice(i, 1); store.set('ncr.history', history); renderHistory(); };
+    cell(x); tb.append(tr);
+  });
+}
+function openImage(h) {
+  $('dlgImg').src = h.thumb;
+  $('dlgCap').textContent = h.label + (h.conf == null ? '' : ' · ' + h.conf.toFixed(1) + '%') + ' · ' + h.time;
+  $('dlg').showModal();
+}
+
+/* ---- Wiring ---- */
+$('start').onclick = startCamera;
+$('stop').onclick = () => stopCamera();
+$('snap').onclick = () => analyze(true);
+$('auto').onchange = () => { setStatus(stream ? 'ready' : 'off'); loop(); };
+$('cam').onchange = () => { if (stream) startCamera(); };
+$('clear').onclick = () => { history = []; store.set('ncr.history', history); renderHistory(); };
+$('dlgClose').onclick = () => $('dlg').close();
+$('dlg').onclick = e => { if (e.target === $('dlg')) $('dlg').close(); };
+$('cfgUrl').value = cfg.endpoint; $('cfgMin').value = cfg.minConfidence; $('cfgInt').value = cfg.intervalMs;
+const saveCfg = () => {
+  cfg.endpoint = $('cfgUrl').value.trim() || DEFAULTS.endpoint;
+  cfg.minConfidence = Math.min(99, Math.max(1, +$('cfgMin').value || DEFAULTS.minConfidence));
+  cfg.intervalMs = Math.max(500, +$('cfgInt').value || DEFAULTS.intervalMs);
+  store.set('ncr.cfg', { endpoint: cfg.endpoint, minConfidence: cfg.minConfidence, intervalMs: cfg.intervalMs });
+};
+['cfgUrl', 'cfgMin', 'cfgInt'].forEach(id => $(id).onchange = saveCfg);
+addEventListener('pagehide', () => stopCamera(true));
+
+listCameras(); renderHistory(); setStatus('off');
+})();
+</script>
+</body>
+</html>
